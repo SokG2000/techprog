@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 2.8)
+project(first_project)
+set (Sourse_exe C/main.cpp)
+execute_process(COMMAND python3 preparing.py WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/A)
+set (Sourse_lib A/index.cpp)
+include_directories (.)
+add_executable(main.exe ${Sourse_exe})
+add_subdirectory(B)
+add_library (prod STATIC ${Sourse_lib})
+target_link_libraries(main.exe lib prod)
+

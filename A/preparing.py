@@ -1,0 +1,6 @@
+fout = open ('index.h', 'w')
+fout.write('int prod(int a, int b);\n')
+fout.close()
+fout = open('index.cpp', 'w')
+fout.write('int prod(int a, int b) {\n    return a * b;\n}')
+fout.close()
