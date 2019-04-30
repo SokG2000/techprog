@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import buildings
+import spells
 from MyExceptions import *
 
 class Unit(ABC):
@@ -20,34 +21,77 @@ class Unit(ABC):
             return False
         if self.characteristics != other.characteristics:
             return False
-        return True    
+        return True
+    
+
+class AttackCommand(ABC):
+    @abstractmethod
+    def __call__(self):
+        pass
+
+
+class RangeAttack(AttackCommand):
+    def __call__(self, unit, other_unit, canvas):
+        other_unit.take_damage(unit.amount, unit.min_damage, unit.max_damage, unit.attack, unit.name, canvas)
+        #print(unit._name + 'attacked')
+        return True
+
+
+class InfantryAttack(AttackCommand):
+    def __call__(self, unit, other_unit, canvas):
+        new_x = other_unit.x
+        new_y = other_unit.y
+        if canvas.dist[new_x][new_y] == 1:
+            #now_army.rest_speed = 0
+            other_unit.take_damage(unit.amount, unit.min_damage, unit.max_damage, unit.attack, unit.name, canvas)
+            if (other_unit.make_hit_back and (not other_unit.died)):
+                unit.take_damage(other_unit.amount, other_unit.min_damage, other_unit.max_damage, other_unit.attack, other_unit.name, canvas)
+            return True
+        if canvas.dist[new_x][new_y] <= unit.rest_speed:
+            newx, newy = canvas.prev[new_x][new_y]
+            dx = canvas.cells[newx][newy][0] - canvas.cells[unit.x][unit.y][0]
+            dy = canvas.cells[newx][newy][1] - canvas.cells[unit.x][unit.y][1]
+            canvas.move_unit(unit, dx, dy)
+            canvas.blocked.remove((unit.x, unit.y))
+            del canvas.positions[(unit.x, unit.y)]
+            unit.x = newx
+            unit.y = newy
+            canvas.blocked.add((unit.x, unit.y))
+            canvas.positions[(unit.x, unit.y)] = unit
+            other_unit.take_damage(unit.amount, unit.min_damage, unit.max_damage, unit.attack, unit.name, canvas)
+            if (other_unit.make_hit_back and(not other_unit.died)):
+                unit.take_damage(other_unit.amount, other_unit.min_damage, other_unit.max_damage, other_unit.attack, other_unit.name, canvas)
+            return True
+        return False
+
 
 
 class Infantry(Unit):
     def move(self):
         print(self._name + ' moved')
-    def attack(self):
-        print(self._name + 'attacked')
+    attack = InfantryAttack()
 
 class Magican(Unit):
     def move(self):
         print(self._name + ' moved')
-    def attack(self):
-        print(self._name + 'attacked')
+    def cast(self, unit, spell, spell_time):
+        return spell(unit, spell_time)
+    attack = RangeAttack()
+
 
 
 class Rifleman(Unit):
     def move(self):
         print(self._name + ' moved')
-    def attack(self):
-        print(self._name + 'attacked')
+    attack = RangeAttack()
+
 
 
 class Archer(Rifleman):
     _name = 'Archer'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 30, "defense": 16, "min_damage" : 2, "max_damage" : 3, "attack" : 3, "speed" : 2, "initiative" : 4}
         #print(self._name + ' created')
 
 
@@ -55,7 +99,7 @@ class Peasant(Infantry):
     _name = 'Peasant'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 6, "defense": 1, "min_damage" : 1, "max_damage" : 2, "attack" : 1, "speed" : 2, "initiative" : 2}
         #print(self._name + ' created')
 
 
@@ -63,7 +107,7 @@ class Swordman(Infantry):
     _name = 'Swordman'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 50, "defense": 16, "min_damage" : 3, "max_damage" : 4, "attack" : 5, "speed" : 3, "initiative" : 4}
         #print(self._name + ' created')
 
 
@@ -71,7 +115,7 @@ class Knight(Infantry):
     _name = 'Knight'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 160, "defense": 27, "min_damage" : 16, "max_damage" : 18, "attack" : 27, "speed" : 2, "initiative" : 4}
         #print(self._name + ' created')
 
 
@@ -79,15 +123,17 @@ class Mage(Magican):
     _name = 'Mage'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 70, "defense": 16, "min_damage" : 3, "max_damage" : 4, "attack" : 15, "speed" : 2, "initiative" : 6}
         #print(self._name + ' created')
+        self.spell = spells.SlowSpell
+        self.spell_time = 3
 
 
 class ElfArcher(Rifleman):
     _name = 'Elf'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 30, "defense": 16, "min_damage" : 4, "max_damage" : 4, "attack" : 15, "speed" : 2, "initiative" : 5}
         #print(self._name + ' created')
     
 
@@ -95,7 +141,7 @@ class ElfSwordman(Infantry):
     _name = 'Elf swordman'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 35, "defense": 16, "min_damage" : 3, "max_damage" : 4, "attack" : 5, "speed" : 3, "initiative" : 4}
         #print(self._name + ' created')
 
 
@@ -103,22 +149,24 @@ class ArcherMaster(Rifleman):
     _name = 'Archer master'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 50, "defense": 16, "min_damage" : 8, "max_damage" : 12, "attack" : 30, "speed" : 3, "initiative" : 7}
         #print(self._name + ' created')
 
 class Druid(Magican):
     _name = 'Druid'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 70, "defense": 16, "min_damage" : 3, "max_damage" : 4, "attack" : 15, "speed" : 2, "initiative" : 6}
         #print(self._name + ' created')
+        self.spell = spells.StrengthSpell
+        self.spell_time = 2
     
 
 class Hobbit(Rifleman):
     _name = 'Hobbit'
     def __init__(self):
         super().__init__()
-        self.characteristics = {}
+        self.characteristics = {"max_health" : 4, "defense": 1, "min_damage" : 1, "max_damage" : 2, "attack" : 1, "speed" : 2, "initiative" : 4}
         #print(self._name + ' created')
     
 
@@ -163,7 +211,7 @@ class PeasantFactory(ManUnitFactory):
 
 
 class ArcherFactory(ManUnitFactory):
-    __cost = 50
+    __cost = 75
     def __str__(self):
         return 'Hire archer'
     def check_buildings(self, player):
